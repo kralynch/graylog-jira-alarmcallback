@@ -419,6 +419,8 @@ public class JiraAlarmCallback implements AlarmCallback
 
 					// iterate through all the message fields and replace the template
 					Map<String, Object> lastMessageFields = lastMessage.getFields();
+					
+					JiraMD5Content = JiraMD5Content.replace("[LAST_MESSAGE.message]", lastMessage.getMessage());
 
 					for (Map.Entry<String, Object> arg : lastMessageFields.entrySet())
 					{
@@ -498,6 +500,7 @@ public class JiraAlarmCallback implements AlarmCallback
 				}
 
 				strTitle = strTitle.replace("[LAST_MESSAGE.source]", lastMessage.getSource());
+				strTitle = strTitle.replace("[LAST_MESSAGE.message]", lastMessage.getMessage());
 
 				for (Map.Entry<String, Object> arg : lastMessageFields.entrySet())
 				{
@@ -563,12 +566,16 @@ public class JiraAlarmCallback implements AlarmCallback
 		}
 
 		strMessage = StringEscapeUtils.unescapeJava(strMessage);
+		
+		MessageSummary lMessage = null;
 
 		// Get the last message
 		if (!result.getMatchingMessages().isEmpty())
 		{
 			// get fields from last message only
 			MessageSummary lastMessage = result.getMatchingMessages().get(0);
+			lMessage = lastMessage;
+			
 			Map<String, Object> lastMessageFields = lastMessage.getFields();
 
 			strMessage = strMessage.replace("[LAST_MESSAGE.message]", lastMessage.getMessage());
@@ -587,6 +594,8 @@ public class JiraAlarmCallback implements AlarmCallback
 		strMessage = strMessage.replace("[CALLBACK_DATE]", Tools.iso8601().toString());
 		strMessage = strMessage.replace("[STREAM_ID]", stream.getId());
 		strMessage = strMessage.replace("[STREAM_TITLE]", stream.getTitle());
+		strMessage = strMessage.replace("[MESSAGE_URL]",
+				buildMessageURL(configuration.getString(CK_GRAYLOG_URL), lMessage));
 		strMessage = strMessage.replace("[STREAM_URL]",
 				buildStreamURL(configuration.getString(CK_GRAYLOG_URL), stream));
 		strMessage = strMessage.replace("[STREAM_RULES]", buildStreamRules(stream));
@@ -617,8 +626,26 @@ public class JiraAlarmCallback implements AlarmCallback
 		{
 			baseUrl += "/";
 		}
-
 		return baseUrl + "streams/" + stream.getId() + "/messages?q=*&rangetype=relative&relative=3600";
+	}
+	
+
+	/**
+	 * Build message URL string
+	 *
+	 * @param baseUrl
+	 * @param lastMessage
+	 * @return
+	 */
+	protected String buildMessageURL(final String configURL, MessageSummary lastMessage)
+	{
+		String baseUrl = configURL;
+
+		if (!baseUrl.endsWith("/"))
+		{
+			baseUrl += "/";
+		}
+		return baseUrl + "messages/" + lastMessage.getIndex() +"/" + lastMessage.getId();
 	}
 
 	/**
